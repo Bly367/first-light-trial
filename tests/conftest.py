@@ -23,14 +23,32 @@ def input_paths(variant=None):
 
 
 def cli_args(paths, as_of, out):
-    return [
+    args = [
         "run",
         "--approved", str(paths["approved"]),
         "--observations", str(paths["observations"]),
         "--submissions", str(paths["submissions"]),
-        "--as-of", as_of,
         "--out", str(out),
     ]
+    return args + ["--as-of", as_of] if as_of else args
+
+
+def rewrite_csv(src, dest, transform):
+    with open(src, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        fields, rows = reader.fieldnames, list(reader)
+    with open(dest, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(transform(rows))
+    return dest
+
+
+def snapshot_tree(root):
+    return {
+        p.relative_to(root).as_posix(): p.read_bytes() if p.is_file() else None
+        for p in sorted(Path(root).rglob("*"))
+    }
 
 
 def _parse(ts):
@@ -69,12 +87,12 @@ class Report:
         )
 
     def allowed_timestamps(self):
-        allowed = {self.as_of}
+        allowed = {self.as_of} if self.as_of else set()
         for path in self.inputs.values():
             allowed.update(TS_RE.findall(path.read_text(encoding="utf-8")))
         with open(self.inputs["submissions"], newline="", encoding="utf-8") as f:
             for sub in csv.DictReader(f):
-                if sub["status"] == "accepted":
+                if sub["status"] == "accepted" and sub["status_at"]:
                     end = _parse(sub["status_at"]) + timedelta(hours=24)
                     allowed.add(end.strftime("%Y-%m-%dT%H:%M:%SZ"))
         return allowed
@@ -82,10 +100,10 @@ class Report:
 
 @pytest.fixture
 def run(tmp_path):
-    def _run(variant=None, as_of=AS_OF, out_name="out"):
+    def _run(variant=None, as_of=AS_OF, out_name="out", overrides=None):
         from fltrial.__main__ import main
 
-        paths = input_paths(variant)
+        paths = {**input_paths(variant), **(overrides or {})}
         out = tmp_path / out_name
         main(cli_args(paths, as_of, out))
         return Report(out, paths, as_of)
