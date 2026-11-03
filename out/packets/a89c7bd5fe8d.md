@@ -10,7 +10,7 @@
 | SKU | DEMO-001 |
 | Attribute | color |
 | As of | 2026-10-26T12:00:00Z |
-| Reason | observed 'Blue' at 2026-10-26T09:00:00Z differs from the approved value; no accepted submission |
+| Reason | observed 'Blue' at 2026-10-26T09:00:00Z differs from the approved value; no timed accepted submission |
 | Next check | refresh after human correction |
 
 ## Values

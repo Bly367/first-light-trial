@@ -21,12 +21,18 @@ def main(argv=None):
     if args.as_of:
         as_of = classify.parse_ts(args.as_of)
     else:
-        as_of = max(classify.parse_ts(o["observed_at"]) for o in observations if o["observed_at"])
+        as_of = max((classify.parse_ts(o["observed_at"]) for o in observations if o["observed_at"]), default=None)
+    warnings = []
+    if as_of is None:
+        warnings.append("as-of unknown: no --as-of given and no observed_at in the observations; window and freshness checks were skipped")
 
     rows = classify.classify_all(approved, observations, submissions, as_of)
-    render.write_outputs(args.out, rows, as_of, [args.approved, args.observations, args.submissions])
+    try:
+        render.write_outputs(args.out, rows, as_of, [args.approved, args.observations, args.submissions], warnings)
+    except render.OutDirError as err:
+        parser.error(str(err))
     packets = sum(1 for r in rows if r["packet"])
-    print(f"as of {classify.fmt_ts(as_of)}: {len(rows)} rows, {packets} packets -> {args.out}/report.md")
+    print(f"as of {classify.fmt_ts(as_of) or 'unknown'}: {len(rows)} rows, {packets} packets -> {args.out}/report.md")
     return 0
 
 

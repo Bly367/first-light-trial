@@ -110,6 +110,7 @@ def _base_row(key, approved):
         "observation_history": [],
         "submission_history": [],
         "packet": None,
+        "warnings": [],
     }
 
 
@@ -126,11 +127,13 @@ def _superseded(key, old, current):
 
 def classify_key(key, approved, observations, submissions, as_of):
     row = _base_row(key, approved)
-    visible = [o for o in observations if not o["observed_at"] or parse_ts(o["observed_at"]) <= as_of]
-    subs = sorted(
-        (s for s in submissions if parse_ts(s["status_at"]) <= as_of),
+    visible = [o for o in observations if not o["observed_at"] or as_of is None or parse_ts(o["observed_at"]) <= as_of]
+    untimed_subs = [s for s in submissions if not s["status_at"]]
+    timed_subs = sorted(
+        (s for s in submissions if s["status_at"] and (as_of is None or parse_ts(s["status_at"]) <= as_of)),
         key=lambda s: parse_ts(s["status_at"]),
     )
+    subs = untimed_subs + timed_subs
     untimed = [o for o in visible if not o["observed_at"]]
     timed = sorted((o for o in visible if o["observed_at"]), key=lambda o: parse_ts(o["observed_at"]))
     row["observation_history"] = [
@@ -145,8 +148,15 @@ def classify_key(key, approved, observations, submissions, as_of):
         for o in untimed + timed
     ]
     row["submission_history"] = [
-        {f: s[f] for f in ("submission_id", "submitted_value_raw", "status", "status_at", "source")}
+        {**{f: s[f] for f in ("submission_id", "submitted_value_raw", "status", "source")}, "status_at": s["status_at"] or None}
         for s in subs
+    ]
+    untimed_note = "".join(
+        f"; {s['submission_id']} ({s['status']}) has no status_at, so it does not decide status" for s in untimed_subs
+    )
+    row["warnings"] = [
+        f"submission {s['submission_id']} has no status_at; listed as untimed and does not decide status"
+        for s in untimed_subs
     ]
 
     good = [o for o in timed if o["refresh_status"] != "failed" and not is_no_observation(o["observed_value_raw"])]
@@ -154,13 +164,13 @@ def classify_key(key, approved, observations, submissions, as_of):
     last_t = parse_ts(last["observed_at"]) if last else None
     failed = [
         o for o in visible
-        if o["refresh_status"] == "failed" and (last_t is None or not o["observed_at"] or parse_ts(o["observed_at"]) > last_t)
+        if o["refresh_status"] == "failed" and o["observed_at"] and (last_t is None or parse_ts(o["observed_at"]) > last_t)
     ]
-    accepted = [s for s in subs if s["status"] == "accepted"]
+    accepted = [s for s in timed_subs if s["status"] == "accepted"]
     acc = accepted[-1] if accepted else None
     acc_t = parse_ts(acc["status_at"]) if acc else None
 
-    too_old = last is not None and as_of - last_t > timedelta(hours=FRESHNESS_HOURS)
+    too_old = last is not None and as_of is not None and as_of - last_t > timedelta(hours=FRESHNESS_HOURS)
     before_acc = last is not None and acc is not None and last_t < acc_t
     if last:
         row.update(
@@ -179,7 +189,11 @@ def classify_key(key, approved, observations, submissions, as_of):
         window_end = acc_t + timedelta(hours=PROCESSING_WINDOW_HOURS)
         accepted_txt = f"{acc['submission_id']} accepted at {acc['status_at']}"
         if last is None or before_acc or too_old:
-            if as_of < window_end:
+            if as_of is None:
+                status, next_check = "UNKNOWN_NEEDS_REFRESH", "refresh"
+                reason = (f"{accepted_txt}; as-of unknown, so the processing window (ends {fmt_ts(window_end)}) "
+                          "cannot be checked; no timed observation")
+            elif as_of < window_end:
                 status, next_check = "PENDING_IN_WINDOW", fmt_ts(window_end)
                 reason = f"{accepted_txt}; no observation since acceptance; inside the {PROCESSING_WINDOW_HOURS}h processing window"
             else:
@@ -208,10 +222,11 @@ def classify_key(key, approved, observations, submissions, as_of):
         status = result
         next_check = {"MISMATCH": "refresh after human correction", "MATCH_FORMAT_ONLY": "none (info)"}.get(status, "none")
         reason = {
-            "MISMATCH": f"{seen} differs from the approved value; no accepted submission",
+            "MISMATCH": f"{seen} differs from the approved value; no timed accepted submission",
             "MATCH_FORMAT_ONLY": f"{seen} matches after normalization; raw values differ",
             "MATCH": f"{seen} matches exactly",
         }[status]
+    reason += untimed_note
     if failed and last:
         reason += f"; observation marked stale: newer refresh failed ({', '.join(o['observed_at'] or 'untimed' for o in failed)})"
 

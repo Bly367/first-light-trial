@@ -7,6 +7,12 @@ from . import load
 from .classify import FRESHNESS_HOURS, HUMAN_REVIEW, PROCESSING_WINDOW_HOURS, fmt_ts
 
 DRAFT_MARK = "DRAFT — for a human to review and send"
+OUT_MARKER = ".fltrial-out"
+OUT_MARKER_TEXT = "Created by fltrial. fltrial may rewrite report files and clear packets/ and raw/ in this folder.\n"
+
+
+class OutDirError(Exception):
+    pass
 
 ASSUMPTIONS = [
     "Normalization is for comparison only: trim, collapse inner whitespace, Unicode NFKC, casefold; "
@@ -53,6 +59,8 @@ def _cell(value):
 
 
 def _pt(as_of):
+    if as_of is None:
+        return "PT unavailable"
     try:
         from zoneinfo import ZoneInfo
 
@@ -71,14 +79,21 @@ def _history_text(row):
     return "; ".join(parts)
 
 
-def report_md(rows, as_of, input_names):
+def _as_of_text(as_of):
+    if as_of is None:
+        return "unknown (no --as-of given and no observed_at in the observations)"
+    return f"{fmt_ts(as_of)} ({_pt(as_of)}, display only)"
+
+
+def report_md(rows, as_of, input_names, warnings=()):
     lines = [
         "# Catalog exceptions report",
         "",
-        f"As of: {fmt_ts(as_of)} ({_pt(as_of)}, display only). All times UTC.",
+        f"As of: {_as_of_text(as_of)}. All times UTC.",
         "",
         f"Inputs (verbatim copies in `raw/`): {', '.join(input_names)}",
         "",
+        *(["## Warnings", "", *[f"- {w}" for w in warnings], ""] if warnings else []),
         "## Assumptions",
         "",
         *[f"- {a}" for a in ASSUMPTIONS],
@@ -119,7 +134,7 @@ def _facts(r):
     for t in r["failed_refreshes"]:
         facts.append(f"Refresh failed at {t or 'an untimed snapshot'}.")
     for s in r["submission_history"]:
-        facts.append(f"Submission {s['submission_id']}: {s['submitted_value_raw']!r}, {s['status']} at {s['status_at']}.")
+        facts.append(f"Submission {s['submission_id']}: {s['submitted_value_raw']!r}, {s['status']} at {s['status_at'] or 'an unknown time (no status_at)'}.")
     if not r["submission_history"]:
         facts.append("No submissions for this key in the inputs.")
     return facts
@@ -147,8 +162,8 @@ def _draft(r):
         lines.append(f"- Value seen on the listing: \"{r['observed_value_raw']}\" (observed {r['observed_at']})")
     else:
         lines.append("- Value seen on the listing: no timed value recorded")
-    for s in r["submission_history"]:
-        lines.append(f"- Our submission {s['submission_id']}: \"{s['submitted_value_raw']}\", {s['status']} at {s['status_at']}")
+    if r["submission_history"]:
+        lines.append("- Submission history: see attached evidence packet")
     if r["status"] in HUMAN_REVIEW:
         question = "Could you help us understand why the listing shows this value and what is needed for the approved value to appear?"
     else:
@@ -176,7 +191,7 @@ def packet_md(r, as_of):
             f"| {label} | {_cell(value)} |"
             for label, value in [
                 ("Incident id", r["incident_id"]), ("Seller", r["seller_id"]), ("Marketplace", r["marketplace_id"]),
-                ("SKU", r["sku"]), ("Attribute", r["attribute"]), ("As of", fmt_ts(as_of)),
+                ("SKU", r["sku"]), ("Attribute", r["attribute"]), ("As of", fmt_ts(as_of) or "unknown"),
                 ("Reason", r["reason"]), ("Next check", r["next_check"]),
             ]
         ],
@@ -206,7 +221,7 @@ def packet_md(r, as_of):
         "|---|---|---|---|---|",
         *([
             f"| {_cell(s['submission_id'])} | {_cell(s['submitted_value_raw'])} | {_cell(s['status'])} "
-            f"| {_cell(s['status_at'])} | {_cell(s['source'])} |"
+            f"| {_cell(s['status_at'] or 'untimed')} | {_cell(s['source'])} |"
             for s in r["submission_history"]
         ] or ["| (none) | | | | |"]),
         "",
@@ -231,10 +246,24 @@ def packet_md(r, as_of):
     return "\n".join(lines) + "\n"
 
 
-def write_outputs(out, rows, as_of, input_paths):
-    out = Path(out)
+def prepare_out(out):
+    """Refuse a non-empty folder fltrial did not create; in its own folder clear only packets/ and raw/."""
+    if out.exists() and not out.is_dir():
+        raise OutDirError(f"--out {out} exists and is not a directory")
+    if out.exists() and any(out.iterdir()) and not (out / OUT_MARKER).is_file():
+        raise OutDirError(f"refusing --out {out}: it is not empty and was not created by fltrial (no {OUT_MARKER} marker)")
+    out.mkdir(parents=True, exist_ok=True)
+    _write(out / OUT_MARKER, OUT_MARKER_TEXT)
     for sub in ("packets", "raw"):
         shutil.rmtree(out / sub, ignore_errors=True)
+
+
+def write_outputs(out, rows, as_of, input_paths, warnings=()):
+    out = Path(out)
+    prepare_out(out)
+    warnings = list(warnings) + [
+        f"{r['seller_id']}/{r['marketplace_id']}/{r['sku']}/{r['attribute']}: {w}" for r in rows for w in r["warnings"]
+    ]
     (out / "packets").mkdir(parents=True)
     load.copy_raw(input_paths, out / "raw")
     input_names = [Path(p).name for p in input_paths]
@@ -246,7 +275,8 @@ def write_outputs(out, rows, as_of, input_paths):
         "freshness_hours": FRESHNESS_HOURS,
         "processing_window_hours": PROCESSING_WINDOW_HOURS,
         "inputs": input_names,
+        "warnings": warnings,
         "rows": rows,
     }
     _write(out / "report.json", json.dumps(report, indent=2, ensure_ascii=False) + "\n")
-    _write(out / "report.md", report_md(rows, as_of, input_names))
+    _write(out / "report.md", report_md(rows, as_of, input_names, warnings))

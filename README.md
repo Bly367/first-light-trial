@@ -24,6 +24,11 @@ Point the matching flag at a variant file, e.g.
 `python3 -m fltrial run --approved fixtures/variants/changed_value/approved.csv --as-of 2026-10-26T12:00:00Z`.
 Reruns on the same inputs and `--as-of` produce byte-identical outputs.
 
+`--out` must be a new or empty folder, or one fltrial created earlier (it writes a `.fltrial-out` marker there).
+A non-empty folder without the marker is refused. In its own folder fltrial clears only `packets/` and `raw/`
+and rewrites the report files; anything else you put there is left alone. If times are missing (no `--as-of`
+and no `observed_at`, or a blank `status_at`), the run still completes and lists the gaps under Warnings.
+
 ## Tests
 
 ```bash
