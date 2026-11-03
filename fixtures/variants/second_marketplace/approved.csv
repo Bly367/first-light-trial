@@ -1,0 +1,8 @@
+seller_id,marketplace_id,sku,attribute,approved_value_raw,value_type,source,approved_at
+DEMO1,US,DEMO-001,color,Navy,text,brand_master_v1,2026-10-20T00:00:00Z
+DEMO1,US,DEMO-002,pack_count,2,int,brand_master_v1,2026-10-20T00:00:00Z
+DEMO1,US,DEMO-003,material,Cotton,text,brand_master_v1,2026-10-20T00:00:00Z
+DEMO1,US,DEMO-004,item_name,Studio Bowl,text,brand_master_v1,2026-10-20T00:00:00Z
+DEMO1,US,DEMO-005,color,Cream,text,brand_master_v1,2026-10-20T00:00:00Z
+DEMO1,US,DEMO-006,size,Large,text,brand_master_v1,2026-10-20T00:00:00Z
+DEMO1,CA,DEMO-001,color,Navy,text,brand_master_v1,2026-10-20T00:00:00Z

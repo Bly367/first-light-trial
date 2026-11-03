@@ -1,0 +1,4 @@
+submission_id,seller_id,marketplace_id,sku,attribute,submitted_value_raw,status,status_at,source
+sub-002-1,DEMO1,US,DEMO-002,pack_count,2,accepted,2026-10-25T09:00:00Z,mock_submission_log
+sub-005-1,DEMO1,US,DEMO-005,color,Cream,accepted,2026-10-25T09:00:00Z,mock_submission_log
+sub-006-1,DEMO1,US,DEMO-006,size,Large,accepted,2026-10-26T08:55:00Z,mock_submission_log
