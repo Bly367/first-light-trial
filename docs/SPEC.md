@@ -44,7 +44,7 @@ Expected statuses for the brief's fixtures (as-of 2026-10-26T12:00Z, rules in §
 
 **Data freshness**:
 - `--as-of` is required in tests and defaults to the newest snapshot time in demos. Fixtures use as-of `2026-10-26T12:00:00Z`. All times are UTC (as the brief says). The report header converts to PT only for display.
-- An observation is **stale** if it is older than `freshness_hours = 72` at as-of, or older than the latest accepted submission for that key. A stale observation can't confirm a pass or a fail; the status becomes UNKNOWN/PENDING with a next check.
+- An observation is **stale** if it is older than `freshness_hours = 72` at as-of, or older than the latest accepted submission for that key. An observation older than 72h at as-of can't confirm a pass or a fail: the status becomes UNKNOWN_NEEDS_REFRESH (or PENDING per the window rules) with a next check. Within 72h, a failed refresh doesn't erase the last good observation. Its status (e.g. MISMATCH) stands, flagged stale, and it still never becomes RESOLVED (see T8).
 - **Failed refresh**: a snapshot row marked `refresh_status=failed`, or a key with no new timed observation. "Latest batch" means the newest timed `observed_at` per (seller_id, marketplace_id, sku, attribute); untimed rows never decide status. Treated as "no new observation". The last good observation is shown as evidence but marked stale. Never RESOLVED.
 
 **Processing window**:
