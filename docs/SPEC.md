@@ -45,7 +45,7 @@ Expected statuses for the brief's fixtures (as-of 2026-10-26T12:00Z, rules in §
 **Data freshness**:
 - `--as-of` is required in tests and defaults to the newest snapshot time in demos. Fixtures use as-of `2026-10-26T12:00:00Z`. All times are UTC (as the brief says). The report header converts to PT only for display.
 - An observation is **stale** if it is older than `freshness_hours = 72` at as-of, or older than the latest accepted submission for that key. A stale observation can't confirm a pass or a fail; the status becomes UNKNOWN/PENDING with a next check.
-- **Failed refresh**: a snapshot row marked `refresh_status=failed`, or a key missing from the latest snapshot batch. Treated as "no new observation". The last good observation is shown as evidence but marked stale. Never RESOLVED.
+- **Failed refresh**: a snapshot row marked `refresh_status=failed`, or a key with no new timed observation. "Latest batch" means the newest timed `observed_at` per (seller_id, marketplace_id, sku, attribute); untimed rows never decide status. Treated as "no new observation". The last good observation is shown as evidence but marked stale. Never RESOLVED.
 
 **Processing window**:
 - `processing_window_hours = 24` after a submission's `accepted_at` (a configurable constant, stated in the report). Acceptance is intermediate, never resolution.
@@ -95,7 +95,7 @@ Join key everywhere: `seller_id, marketplace_id, sku, attribute`. Keys are never
 
 DEMO-005 is modeled as two observation rows: Gold with `observed_at` blank and source note `brief gives no time` (no time is invented; an untimed row can never resolve or fail a key), and Cream at 2026-10-26T09:00Z. Resolution rests only on the Cream observation after acceptance. DEMO-004 is one row with `UNKNOWN` and an empty `observed_at`. DEMO-006 has an observation at 2026-10-23T09:00Z (Medium) and an acceptance at 2026-10-26T08:55Z.
 
-**Incident id** = `sha1(seller_id|marketplace_id|sku|attribute|normalized_approved_value)[:12]`. It's stable across reruns. A changed approved value creates a new id, and the old incident is listed as `SUPERSEDED` (no packet). Outputs are rewritten in full each run, not appended. That's how dedupe works.
+**Incident id** = `sha1(seller_id|marketplace_id|sku|attribute|normalized_approved_value)[:12]`. It's stable across reruns. A changed approved value creates a new id, and the old incident is listed as `SUPERSEDED` (no packet). `approved.csv` is a history: per key, the row with the newest `approved_at` is current; older rows are SUPERSEDED and sort last in the report. Outputs are rewritten in full each run, not appended. That's how dedupe works.
 
 ## 5. Acceptance tests (written and committed first, all failing before implementation)
 Fixed `as_of = 2026-10-26T12:00:00Z`, brief fixtures unless noted.
@@ -108,8 +108,8 @@ Fixed `as_of = 2026-10-26T12:00:00Z`, brief fixtures unless noted.
 | T5 / DEMO-005 | accepted 10-25, earlier Gold (observed_at blank, note 'brief gives no time'), Cream 10-26 09:00 | RESOLVED_VERIFIED based on the Cream observation only; no packet; history lists Gold as untimed and ordered before Cream; no invented timestamp anywhere in the outputs |
 | T6 / DEMO-006 | accepted 10-26 08:55, last obs 10-23 Medium | PENDING_IN_WINDOW; next check 2026-10-27T08:55Z; not called a failure |
 | T7 idempotent rerun | run twice on the same inputs | identical report/packet bytes; same incident ids; packet count unchanged (4) |
-| T8 failed refresh | add a newer row for DEMO-001 with `refresh_status=failed`; also drop DEMO-005 from the latest batch with as-of moved past freshness | DEMO-001 stays MISMATCH backed by the last good observation, marked stale or UNKNOWN_NEEDS_REFRESH per the rules; never RESOLVED; no crash |
-| T9 changed approved value | change DEMO-001 approved to Blue | DEMO-001 → MATCH; the old Navy incident is SUPERSEDED with no packet; other ids unchanged |
+| T8 failed refresh | `--as-of` is run-level. (a) Add a newer `refresh_status=failed` row for DEMO-001 at fixture as-of. (b) Rerun with as-of more than 72h after the last good DEMO-001 observation | (a) DEMO-001 stays MISMATCH on the last good observation, marked stale. (b) DEMO-001 becomes UNKNOWN_NEEDS_REFRESH per §3. Never RESOLVED; untimed rows never decide status; no crash |
+| T9 changed approved value | append an approved.csv row for DEMO-001 = Blue with a newer `approved_at` (history kept) | DEMO-001 → MATCH; the older Navy row/incident is SUPERSEDED, no packet, sorted last; other ids unchanged |
 | T10 second marketplace | add `CA` rows for DEMO-001 (approved Navy, observed Navy) | US DEMO-001 still MISMATCH; CA DEMO-001 MATCH; separate rows and ids; never merged |
 | T11 policy: no side effects | run the CLI with network sockets patched to raise | no network use; writes only under `out/` |
 | T12 policy: support draft | every packet draft | marked "DRAFT — for a human to review and send"; quotes only fixture facts; contains no case number or prior-contact claim unless present in the inputs; no "we have already contacted" phrasing |
@@ -120,7 +120,7 @@ Fixed `as_of = 2026-10-26T12:00:00Z`, brief fixtures unless noted.
 ```
 first-light-trial/
   README.md            # run instructions, assumptions, policy boundary
-  ONE_PAGER.md         # approach, data limits, next production step (Brian edits)
+  ONE_PAGER.md         # OUT OF BUILDER SCOPE (Brian/Project Lead)
   fltrial/
     __init__.py
     __main__.py        # argparse CLI: run --approved --observations --submissions --as-of --out
@@ -138,7 +138,7 @@ first-light-trial/
     test_marketplace.py# T10
     test_policy.py     # T11–T13
     test_normalize.py  # T14
-  out/                 # generated sample outputs, committed for the reviewer
+  out/                 # generated sample outputs; Builder commits these plus README.md
 ```
 About 300–400 lines of code total. No dependencies beyond pytest (dev).
 
