@@ -1,0 +1,260 @@
+{
+  "as_of": "2026-10-26T12:00:00Z",
+  "freshness_hours": 72,
+  "processing_window_hours": 24,
+  "inputs": [
+    "approved.csv",
+    "observations.csv",
+    "submissions.csv"
+  ],
+  "rows": [
+    {
+      "rank": 1,
+      "incident_id": "f81e12c7d9ab",
+      "seller_id": "DEMO1",
+      "marketplace_id": "US",
+      "sku": "DEMO-002",
+      "attribute": "pack_count",
+      "status": "ACCEPTED_NOT_APPLIED",
+      "who_acts": "human review, top priority",
+      "reason": "sub-002-1 accepted at 2026-10-25T09:00:00Z; observed '1' at 2026-10-26T09:00:00Z, at or after the window end 2026-10-26T09:00:00Z, still differs",
+      "next_check": "refresh after human correction",
+      "approved_value_raw": "2",
+      "approved_value_normalized": "2",
+      "value_type": "int",
+      "approved_source": "brand_master_v1",
+      "approved_at": "2026-10-20T00:00:00Z",
+      "observed_value_raw": "1",
+      "observed_value_normalized": "1",
+      "observed_at": "2026-10-26T09:00:00Z",
+      "observation_source": "mock_listing_snapshot",
+      "snapshot_id": "snap-2026-10-26-0900-US",
+      "observation_stale": false,
+      "failed_refreshes": [],
+      "observation_history": [
+        {
+          "snapshot_id": "snap-2026-10-26-0900-US",
+          "observed_value_raw": "1",
+          "observed_at": "2026-10-26T09:00:00Z",
+          "timed": true,
+          "source": "mock_listing_snapshot",
+          "refresh_status": "ok"
+        }
+      ],
+      "submission_history": [
+        {
+          "submission_id": "sub-002-1",
+          "submitted_value_raw": "2",
+          "status": "accepted",
+          "status_at": "2026-10-25T09:00:00Z",
+          "source": "mock_submission_log"
+        }
+      ],
+      "packet": "packets/f81e12c7d9ab.md"
+    },
+    {
+      "rank": 2,
+      "incident_id": "a89c7bd5fe8d",
+      "seller_id": "DEMO1",
+      "marketplace_id": "US",
+      "sku": "DEMO-001",
+      "attribute": "color",
+      "status": "MISMATCH",
+      "who_acts": "human review",
+      "reason": "observed 'Blue' at 2026-10-26T09:00:00Z differs from the approved value; no accepted submission",
+      "next_check": "refresh after human correction",
+      "approved_value_raw": "Navy",
+      "approved_value_normalized": "navy",
+      "value_type": "text",
+      "approved_source": "brand_master_v1",
+      "approved_at": "2026-10-20T00:00:00Z",
+      "observed_value_raw": "Blue",
+      "observed_value_normalized": "blue",
+      "observed_at": "2026-10-26T09:00:00Z",
+      "observation_source": "mock_listing_snapshot",
+      "snapshot_id": "snap-2026-10-26-0900-US",
+      "observation_stale": false,
+      "failed_refreshes": [],
+      "observation_history": [
+        {
+          "snapshot_id": "snap-2026-10-26-0900-US",
+          "observed_value_raw": "Blue",
+          "observed_at": "2026-10-26T09:00:00Z",
+          "timed": true,
+          "source": "mock_listing_snapshot",
+          "refresh_status": "ok"
+        }
+      ],
+      "submission_history": [],
+      "packet": "packets/a89c7bd5fe8d.md"
+    },
+    {
+      "rank": 3,
+      "incident_id": "d9c1a9ec5e12",
+      "seller_id": "DEMO1",
+      "marketplace_id": "US",
+      "sku": "DEMO-004",
+      "attribute": "item_name",
+      "status": "UNKNOWN_OBSERVATION",
+      "who_acts": "needs more data",
+      "reason": "no timed observation with a value (UNKNOWN, empty or untimed rows only)",
+      "next_check": "refresh",
+      "approved_value_raw": "Studio Bowl",
+      "approved_value_normalized": "studio bowl",
+      "value_type": "text",
+      "approved_source": "brand_master_v1",
+      "approved_at": "2026-10-20T00:00:00Z",
+      "observed_value_raw": null,
+      "observed_value_normalized": null,
+      "observed_at": null,
+      "observation_source": null,
+      "snapshot_id": null,
+      "observation_stale": false,
+      "failed_refreshes": [],
+      "observation_history": [
+        {
+          "snapshot_id": null,
+          "observed_value_raw": "UNKNOWN",
+          "observed_at": null,
+          "timed": false,
+          "source": "mock_listing_snapshot",
+          "refresh_status": "ok"
+        }
+      ],
+      "submission_history": [],
+      "packet": "packets/d9c1a9ec5e12.md"
+    },
+    {
+      "rank": 4,
+      "incident_id": "e6cc4203200a",
+      "seller_id": "DEMO1",
+      "marketplace_id": "US",
+      "sku": "DEMO-006",
+      "attribute": "size",
+      "status": "PENDING_IN_WINDOW",
+      "who_acts": "needs more data",
+      "reason": "sub-006-1 accepted at 2026-10-26T08:55:00Z; no observation since acceptance; inside the 24h processing window",
+      "next_check": "2026-10-27T08:55:00Z",
+      "approved_value_raw": "Large",
+      "approved_value_normalized": "large",
+      "value_type": "text",
+      "approved_source": "brand_master_v1",
+      "approved_at": "2026-10-20T00:00:00Z",
+      "observed_value_raw": "Medium",
+      "observed_value_normalized": "medium",
+      "observed_at": "2026-10-23T09:00:00Z",
+      "observation_source": "mock_listing_snapshot",
+      "snapshot_id": "snap-2026-10-23-0900-US",
+      "observation_stale": true,
+      "failed_refreshes": [],
+      "observation_history": [
+        {
+          "snapshot_id": "snap-2026-10-23-0900-US",
+          "observed_value_raw": "Medium",
+          "observed_at": "2026-10-23T09:00:00Z",
+          "timed": true,
+          "source": "mock_listing_snapshot",
+          "refresh_status": "ok"
+        }
+      ],
+      "submission_history": [
+        {
+          "submission_id": "sub-006-1",
+          "submitted_value_raw": "Large",
+          "status": "accepted",
+          "status_at": "2026-10-26T08:55:00Z",
+          "source": "mock_submission_log"
+        }
+      ],
+      "packet": "packets/e6cc4203200a.md"
+    },
+    {
+      "rank": 5,
+      "incident_id": "00be21e41273",
+      "seller_id": "DEMO1",
+      "marketplace_id": "US",
+      "sku": "DEMO-003",
+      "attribute": "material",
+      "status": "MATCH_FORMAT_ONLY",
+      "who_acts": "none, listed as info",
+      "reason": "observed 'cotton' at 2026-10-26T09:00:00Z matches after normalization; raw values differ",
+      "next_check": "none (info)",
+      "approved_value_raw": "Cotton",
+      "approved_value_normalized": "cotton",
+      "value_type": "text",
+      "approved_source": "brand_master_v1",
+      "approved_at": "2026-10-20T00:00:00Z",
+      "observed_value_raw": "cotton",
+      "observed_value_normalized": "cotton",
+      "observed_at": "2026-10-26T09:00:00Z",
+      "observation_source": "mock_listing_snapshot",
+      "snapshot_id": "snap-2026-10-26-0900-US",
+      "observation_stale": false,
+      "failed_refreshes": [],
+      "observation_history": [
+        {
+          "snapshot_id": "snap-2026-10-26-0900-US",
+          "observed_value_raw": "cotton",
+          "observed_at": "2026-10-26T09:00:00Z",
+          "timed": true,
+          "source": "mock_listing_snapshot",
+          "refresh_status": "ok"
+        }
+      ],
+      "submission_history": [],
+      "packet": null
+    },
+    {
+      "rank": 6,
+      "incident_id": "cf947aa276f9",
+      "seller_id": "DEMO1",
+      "marketplace_id": "US",
+      "sku": "DEMO-005",
+      "attribute": "color",
+      "status": "RESOLVED_VERIFIED",
+      "who_acts": "none",
+      "reason": "sub-005-1 accepted at 2026-10-25T09:00:00Z; observed 'Cream' at 2026-10-26T09:00:00Z matches the approved value",
+      "next_check": "none",
+      "approved_value_raw": "Cream",
+      "approved_value_normalized": "cream",
+      "value_type": "text",
+      "approved_source": "brand_master_v1",
+      "approved_at": "2026-10-20T00:00:00Z",
+      "observed_value_raw": "Cream",
+      "observed_value_normalized": "cream",
+      "observed_at": "2026-10-26T09:00:00Z",
+      "observation_source": "mock_listing_snapshot",
+      "snapshot_id": "snap-2026-10-26-0900-US",
+      "observation_stale": false,
+      "failed_refreshes": [],
+      "observation_history": [
+        {
+          "snapshot_id": null,
+          "observed_value_raw": "Gold",
+          "observed_at": null,
+          "timed": false,
+          "source": "mock_listing_snapshot (brief gives no time)",
+          "refresh_status": "ok"
+        },
+        {
+          "snapshot_id": "snap-2026-10-26-0900-US",
+          "observed_value_raw": "Cream",
+          "observed_at": "2026-10-26T09:00:00Z",
+          "timed": true,
+          "source": "mock_listing_snapshot",
+          "refresh_status": "ok"
+        }
+      ],
+      "submission_history": [
+        {
+          "submission_id": "sub-005-1",
+          "submitted_value_raw": "Cream",
+          "status": "accepted",
+          "status_at": "2026-10-25T09:00:00Z",
+          "source": "mock_submission_log"
+        }
+      ],
+      "packet": null
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+snapshot_id,seller_id,marketplace_id,sku,attribute,observed_value_raw,observed_at,source,refresh_status
+snap-2026-10-26-0900-US,DEMO1,US,DEMO-001,color,Blue,2026-10-26T09:00:00Z,mock_listing_snapshot,ok
+snap-2026-10-26-0900-US,DEMO1,US,DEMO-002,pack_count,1,2026-10-26T09:00:00Z,mock_listing_snapshot,ok
+snap-2026-10-26-0900-US,DEMO1,US,DEMO-003,material,cotton,2026-10-26T09:00:00Z,mock_listing_snapshot,ok
+,DEMO1,US,DEMO-004,item_name,UNKNOWN,,mock_listing_snapshot,ok
+,DEMO1,US,DEMO-005,color,Gold,,mock_listing_snapshot (brief gives no time),ok
+snap-2026-10-26-0900-US,DEMO1,US,DEMO-005,color,Cream,2026-10-26T09:00:00Z,mock_listing_snapshot,ok
+snap-2026-10-23-0900-US,DEMO1,US,DEMO-006,size,Medium,2026-10-23T09:00:00Z,mock_listing_snapshot,ok
