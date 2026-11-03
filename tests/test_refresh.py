@@ -64,17 +64,25 @@ def test_no_as_of_and_no_observed_at_reports_unknown(run, tmp_path):
         assert ts in allowed, f"invented timestamp {ts}"
 
 
-def test_blank_status_at_reports_uncertainty(run, tmp_path):
+def test_blank_status_at_on_accepted_submission_needs_refresh(run, tmp_path):
+    untimed = {"sub-002-1", "sub-005-1"}
     subs = rewrite_csv(
         FIXTURES / "submissions.csv", tmp_path / "submissions.csv",
-        lambda rows: [dict(row, status_at="") if row["submission_id"] == "sub-002-1" else row for row in rows],
+        lambda rows: [dict(row, status_at="") if row["submission_id"] in untimed else row for row in rows],
     )
     r = run(overrides={"submissions": subs})
-    row = r.row("DEMO-002")
-    assert row["status"] == "MISMATCH"
-    assert "no status_at" in row["reason"]
-    assert row["submission_history"][0]["submission_id"] == "sub-002-1"
-    assert row["submission_history"][0]["status_at"] is None
-    assert any("sub-002-1" in w for w in r.data["warnings"])
-    assert r.row("DEMO-005")["status"] == "RESOLVED_VERIFIED"
+    for sku, sub_id in (("DEMO-002", "sub-002-1"), ("DEMO-005", "sub-005-1")):
+        row = r.row(sku)
+        assert row["status"] == "UNKNOWN_NEEDS_REFRESH", sku
+        assert row["next_check"] == "refresh"
+        assert "no status_at" in row["reason"]
+        assert "processing window can't be judged" in row["reason"]
+        assert row["submission_history"][0]["submission_id"] == sub_id
+        assert row["submission_history"][0]["status_at"] is None
+        assert r.packet(row) is not None
+        assert any(
+            sub_id in w and "acceptance time is unknown" in w and "processing window can't be judged" in w
+            for w in r.data["warnings"]
+        ), sub_id
     assert r.row("DEMO-006")["status"] == "PENDING_IN_WINDOW"
+    assert r.row("DEMO-001")["status"] == "MISMATCH"
