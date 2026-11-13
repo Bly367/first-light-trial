@@ -58,7 +58,7 @@ def test_no_as_of_and_no_observed_at_reports_unknown(run, tmp_path):
         "DEMO-006": "UNKNOWN_NEEDS_REFRESH",
     }
     assert all(row["next_check"] == "refresh" for row in r.rows)
-    assert "as-of unknown" in r.row("DEMO-002")["reason"]
+    assert "as-of time is unknown" in r.row("DEMO-002")["reason"]
     allowed = r.allowed_timestamps()
     for ts in TS_RE.findall(r.output_text()):
         assert ts in allowed, f"invented timestamp {ts}"
@@ -114,5 +114,5 @@ def test_timed_acceptance_still_decides_beside_an_untimed_one(run, tmp_path):
     r = run(overrides={"submissions": subs})
     row = r.row("DEMO-002")
     assert row["status"] == "ACCEPTED_NOT_APPLIED"
-    assert "sub-002-1 accepted at 2026-10-25T09:00:00Z" in row["reason"]
+    assert "sub-002-1 was accepted at 2026-10-25T09:00:00Z" in row["reason"]
     assert _has_untimed_acceptance_warning(r, "sub-002-2")

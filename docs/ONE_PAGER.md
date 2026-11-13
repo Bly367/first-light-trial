@@ -10,7 +10,7 @@
 **What it does.**
 1. **Inputs:** three spreadsheet files (CSV): approved values, timestamped listing snapshots, and the history of submitted fixes.
 2. **A status for each SKU** (SKU = the seller's product code), such as mismatch or still pending.
-3. **Outputs:** a report ranked by urgency; an evidence packet for each open problem with facts, possible causes, and a next step; and a draft support message that a human reviews and sends. Rerunning creates no duplicate problems.
+3. **Outputs:** a report ranked by urgency; an evidence packet for each open problem with facts, possible causes, and a next step; and a draft support message that a human reviews and sends. Rerunning creates no duplicate problems. The report and packets explain, in plain language, why each status was chosen and why a nearby alternative was not.
 
 **Demo results** (from the tool's saved sample output in the code, `out/report.md`):
 

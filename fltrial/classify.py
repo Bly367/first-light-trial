@@ -29,6 +29,42 @@ WHO_ACTS = {
     "MATCH_FORMAT_ONLY": "none, listed as info",
 }
 KEY_FIELDS = ("seller_id", "marketplace_id", "sku", "attribute")
+WHY = {
+    "ACCEPTED_NOT_APPLIED": (
+        "It is not still pending, because the listing was checked {window_hours} hours or more after {sub} was "
+        "accepted at {accepted_at}, and it is not verified as fixed, because the listing still shows a different "
+        "value. It is ranked first, for human review, because an accepted fix that did not show up on the listing "
+        "is the most urgent kind of problem."
+    ),
+    "MISMATCH": (
+        "This is not a match or a formatting-only difference, because the values really differ, and it is not an "
+        "accepted fix that did not apply, because there is no accepted submission with a recorded time. It is "
+        "ranked after accepted fixes that did not apply: a confirmed mismatch needs a human, but nothing already "
+        "submitted has failed to show up."
+    ),
+    "UNKNOWN_NEEDS_REFRESH": (
+        "This is not a confirmed mismatch or a confirmed fix, because there is no fresh listing value to show "
+        "whether it passes or fails ({detail}). It is ranked below confirmed problems because the next step is to "
+        "get more data, not to escalate."
+    ),
+    "UNKNOWN_OBSERVATION": (
+        "It is not a mismatch, because we never saw a real listing value. It is ranked below confirmed problems; "
+        "the next step is to get a listing snapshot first."
+    ),
+    "PENDING_IN_WINDOW": (
+        "It is not treated as an accepted fix that did not apply, because {detail}, so it is too early to call it "
+        "a problem. It is ranked lower because the next step is to wait until {window_end} and check again."
+    ),
+    "MATCH_FORMAT_ONLY": (
+        "It is not a mismatch, because the values are the same once formatting such as case and spacing is "
+        "ignored. It is listed for information only, ranked below every open problem, and has no evidence packet."
+    ),
+    "RESOLVED_VERIFIED": (
+        "It is not pending or unapplied, because this listing value was seen after {sub} was accepted at "
+        "{accepted_at} and it matches the approved value. It is ranked last among active rows; no action is needed."
+    ),
+    "MATCH": "The values match exactly, so no action is needed.",
+}
 
 
 def parse_ts(value):
@@ -119,10 +155,26 @@ def _superseded(key, old, current):
     row.update(
         status="SUPERSEDED",
         who_acts="none",
-        reason=f"approved value replaced by {current['approved_value_raw']!r} (approved_at {current['approved_at']})",
+        reason=(f"The approved value \"{old['approved_value_raw']}\" was replaced by \"{current['approved_value_raw']}\" "
+                f"(approved at {current['approved_at']}), so it is no longer checked. It has no packet and sorts last."),
         next_check="none",
     )
     return row
+
+
+def explain(status, row, acc=None, window_end=None, detail=""):
+    """Plain-language reason: the values compared, the nearby status ruled out, and why the row ranks where it does."""
+    if row["observed_value_raw"] is None:
+        compared = (f"The approved value is \"{row['approved_value_raw']}\", but there is no usable listing value to "
+                    "compare it with: no snapshot has both a real value and a time.")
+    else:
+        compared = (f"We compared the approved value \"{row['approved_value_raw']}\" with the listing value "
+                    f"\"{row['observed_value_raw']}\" seen at {row['observed_at']}.")
+    fields = dict(
+        sub=acc["submission_id"] if acc else None, accepted_at=acc["status_at"] if acc else None,
+        window_end=fmt_ts(window_end), window_hours=PROCESSING_WINDOW_HOURS, fresh_hours=FRESHNESS_HOURS,
+    )
+    return f"{compared} {WHY[status].format(detail=detail.format(**fields), **fields)}"
 
 
 def classify_key(key, approved, observations, submissions, as_of):
@@ -153,9 +205,6 @@ def classify_key(key, approved, observations, submissions, as_of):
     ]
     untimed_accepted = [s for s in untimed_subs if s["status"] == "accepted"]
     untimed_other = [s for s in untimed_subs if s["status"] != "accepted"]
-    untimed_note = "".join(
-        f"; {s['submission_id']} ({s['status']}) has no status_at, so it does not decide status" for s in untimed_subs
-    )
     row["warnings"] = [
         f"submission {s['submission_id']} was accepted but has no status_at: the acceptance time is unknown, "
         "so the processing window can't be judged"
@@ -189,52 +238,52 @@ def classify_key(key, approved, observations, submissions, as_of):
         )
     row["failed_refreshes"] = [o["observed_at"] or None for o in failed]
     result = compare(approved["approved_value_raw"], last["observed_value_raw"], approved["value_type"]) if last else None
-    seen = f"observed {last['observed_value_raw']!r} at {last['observed_at']}" if last else ""
 
+    window_end, detail = None, ""
     if acc:
         window_end = acc_t + timedelta(hours=PROCESSING_WINDOW_HOURS)
-        accepted_txt = f"{acc['submission_id']} accepted at {acc['status_at']}"
         if last is None or before_acc or too_old:
             if as_of is None:
                 status, next_check = "UNKNOWN_NEEDS_REFRESH", "refresh"
-                reason = (f"{accepted_txt}; as-of unknown, so the processing window (ends {fmt_ts(window_end)}) "
-                          "cannot be checked; no timed observation")
+                detail = ("the as-of time is unknown, so the {window_hours}-hour window after {sub} was accepted at "
+                          "{accepted_at} can't be checked")
             elif as_of < window_end:
                 status, next_check = "PENDING_IN_WINDOW", fmt_ts(window_end)
-                reason = f"{accepted_txt}; no observation since acceptance; inside the {PROCESSING_WINDOW_HOURS}h processing window"
+                detail = ("{sub} was accepted at {accepted_at}, its {window_hours}-hour window is still open, and the "
+                          "listing has not been checked since then")
             else:
                 status, next_check = "UNKNOWN_NEEDS_REFRESH", "refresh"
-                reason = f"{accepted_txt}; processing window ended {fmt_ts(window_end)}; no fresh observation since acceptance"
+                detail = ("nothing fresh has been seen since {sub} was accepted at {accepted_at}, and its "
+                          "{window_hours}-hour window closed at {window_end}")
         elif result != "MISMATCH":
             if failed:
                 status, next_check = "UNKNOWN_NEEDS_REFRESH", "refresh"
-                reason = f"{accepted_txt}; {seen} matches, but a newer refresh failed, so it cannot be confirmed"
+                detail = "it matched, but a newer refresh failed, so the match can't be confirmed"
             else:
                 status, next_check = "RESOLVED_VERIFIED", "none"
-                reason = f"{accepted_txt}; {seen} matches the approved value"
         elif last_t >= window_end:
             status, next_check = "ACCEPTED_NOT_APPLIED", "refresh after human correction"
-            reason = f"{accepted_txt}; {seen}, at or after the window end {fmt_ts(window_end)}, still differs"
         else:
             status, next_check = "PENDING_IN_WINDOW", fmt_ts(window_end)
-            reason = f"{accepted_txt}; {seen} still differs but is inside the processing window"
+            detail = ("{sub} was accepted at {accepted_at} and the listing was checked before its "
+                      "{window_hours}-hour window closed")
     elif last is None:
         status, next_check = "UNKNOWN_OBSERVATION", "refresh"
-        reason = "no timed observation with a value (UNKNOWN, empty or untimed rows only)"
     elif too_old:
         status, next_check = "UNKNOWN_NEEDS_REFRESH", "refresh"
-        reason = f"last good observation at {last['observed_at']} is older than {FRESHNESS_HOURS}h"
+        detail = "the last one is more than {fresh_hours} hours old"
     else:
         status = result
         next_check = {"MISMATCH": "refresh after human correction", "MATCH_FORMAT_ONLY": "none (info)"}.get(status, "none")
-        reason = {
-            "MISMATCH": f"{seen} differs from the approved value; no timed accepted submission",
-            "MATCH_FORMAT_ONLY": f"{seen} matches after normalization; raw values differ",
-            "MATCH": f"{seen} matches exactly",
-        }[status]
-    reason += untimed_note
+    reason = explain(status, row, acc, window_end, detail)
+    if untimed_subs:
+        listed = ", ".join(f"{s['submission_id']} ({s['status']})" for s in untimed_subs)
+        if len(untimed_subs) == 1:
+            reason += f" Submission {listed} has no status_at, so its time is unknown and it does not decide the status."
+        else:
+            reason += f" Submissions {listed} have no status_at, so their times are unknown and they do not decide the status."
     if failed and last:
-        reason += f"; observation marked stale: newer refresh failed ({', '.join(o['observed_at'] or 'untimed' for o in failed)})"
+        reason += f" The listing value is marked stale because a newer refresh failed ({', '.join(o['observed_at'] for o in failed)})."
 
     row.update(status=status, reason=reason, next_check=next_check, who_acts=WHO_ACTS.get(status, "none"))
     if status not in NO_PACKET:
