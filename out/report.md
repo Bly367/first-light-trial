@@ -7,7 +7,7 @@ Inputs (verbatim copies in `raw/`): approved.csv, observations.csv, submissions.
 ## Assumptions
 
 - Normalization is for comparison only: trim, collapse inner whitespace, Unicode NFKC, casefold; `int` attributes compare numerically (`2` == `2.0`). No synonym mapping. Raw values are always shown.
-- `UNKNOWN`, empty, `None` or a missing row means no observation, never a mismatch. Rows without `observed_at` are listed but never decide a status.
+- `UNKNOWN`, empty, `None` or a missing row means no observation, never a mismatch. Rows without `observed_at`, and submissions without `status_at` (even accepted ones), are listed but never decide a status; an untimed acceptance adds a warning because the processing window can't be judged.
 - Freshness: an observation older than 72h at as-of, or older than the latest accepted submission, cannot confirm a pass or a fail.
 - Failed refresh (`refresh_status=failed`): the last good observation is kept as evidence and marked stale; never RESOLVED.
 - Processing window: 24h after `accepted_at`. An observation at exactly accepted_at + 24h is outside the window (inclusive `>=`, a judgment call).
