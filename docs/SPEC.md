@@ -53,6 +53,7 @@ Expected statuses for the brief's fixtures (as-of 2026-10-26T12:00Z, rules in §
 - An observation at or after `accepted_at + 24h` that matches → RESOLVED_VERIFIED. One that still mismatches → ACCEPTED_NOT_APPLIED.
 - An observation after acceptance but inside the window that matches → RESOLVED_VERIFIED. One that mismatches → PENDING_IN_WINDOW (not a failure yet).
 - Edge in the fixtures: DEMO-002 was observed exactly 24h after acceptance, which counts as out of window (inclusive `>=`). This is called out as a judgment call.
+- **Untimed accepted submissions** (Project Lead decision): an accepted submission with a blank `status_at` is treated like an untimed observation. It never decides status and never overrides the status computed from timed submissions (`status_at` present and <= as-of) and timed observations. It is listed in the submission history, noted in the reason, and always adds a warning that the acceptance time is unknown, so the processing window can't be judged. So: a timed mismatch with no usable timed acceptance stays MISMATCH (not UNKNOWN_NEEDS_REFRESH) and keeps its packet; a match stays MATCH / MATCH_FORMAT_ONLY and is never promoted to RESOLVED_VERIFIED; PENDING_IN_WINDOW and ACCEPTED_NOT_APPLIED are never based on an untimed acceptance. If a timed acceptance also exists, the timed one decides, and the untimed one is still warned about.
 
 **Priority order** (report sort): ACCEPTED_NOT_APPLIED > MISMATCH > UNKNOWN_NEEDS_REFRESH > UNKNOWN_OBSERVATION > PENDING_IN_WINDOW > MATCH_FORMAT_ONLY > RESOLVED_VERIFIED / MATCH. Ties sort by seller, marketplace, SKU, attribute.
 
@@ -112,15 +113,17 @@ Fixed `as_of = 2026-10-26T12:00:00Z`, brief fixtures unless noted.
 | T9 changed approved value | append an approved.csv row for DEMO-001 = Blue with a newer `approved_at` (history kept) | DEMO-001 → MATCH; the older Navy row/incident is SUPERSEDED, no packet, sorted last; other ids unchanged |
 | T10 second marketplace | add `CA` rows for DEMO-001 (approved Navy, observed Navy) | US DEMO-001 still MISMATCH; CA DEMO-001 MATCH; separate rows and ids; never merged |
 | T11 policy: no side effects | run the CLI with network sockets patched to raise | no network use; writes only under `out/` |
-| T12 policy: support draft | every packet draft | marked "DRAFT — for a human to review and send"; quotes only fixture facts; contains no case number or prior-contact claim unless present in the inputs; no "we have already contacted" phrasing |
+| T12 policy: support draft | every packet draft | marked "DRAFT — for a human to review and send"; quotes only fixture facts; contains no case number or prior-contact claim unless present in the inputs; no "we have already contacted" phrasing; no submission ids or submitted values (those stay in the evidence section); every draft, even with no submission history, says "Please attach the evidence packet before sending.", and so does the suggested next step for human-review statuses |
 | T13 raw copy | after a run | `out/raw/` matches the input files byte-for-byte |
 | T14 normalization units | whitespace/case/NFKC/int parsing; synonyms not merged | as in §3 |
+| T14a untimed acceptance, mismatch | test-local copy of `submissions.csv` with `sub-002-1` `status_at` blank (DEMO-002 observed 1, approved 2) | MISMATCH (not UNKNOWN_NEEDS_REFRESH); warning that the acceptance time is unknown; packet exists |
+| T14b untimed acceptance, match | test-local copy with `sub-005-1` `status_at` blank (DEMO-005 observed Cream, approved Cream) | MATCH or MATCH_FORMAT_ONLY (not RESOLVED_VERIFIED, not UNKNOWN_NEEDS_REFRESH); warning present |
 
 ## 6. File plan
 ```
 first-light-trial/
   README.md            # run instructions, assumptions, policy boundary
-  ONE_PAGER.md         # OUT OF BUILDER SCOPE (Brian/Project Lead)
+  docs/ONE_PAGER.md    # plain-language summary (from the Project Lead's text)
   fltrial/
     __init__.py
     __main__.py        # argparse CLI: run --approved --observations --submissions --as-of --out
@@ -134,7 +137,7 @@ first-light-trial/
   tests/
     test_demo_cases.py # T1–T6
     test_rerun.py      # T7, T9
-    test_refresh.py    # T8
+    test_refresh.py    # T8, T14a, T14b
     test_marketplace.py# T10
     test_policy.py     # T11–T13
     test_normalize.py  # T14
