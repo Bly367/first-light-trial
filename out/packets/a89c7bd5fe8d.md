@@ -10,8 +10,11 @@
 | SKU | DEMO-001 |
 | Attribute | color |
 | As of | 2026-10-26T12:00:00Z |
-| Reason | observed 'Blue' at 2026-10-26T09:00:00Z differs from the approved value; no timed accepted submission |
 | Next check | refresh after human correction |
+
+## Why this status
+
+We compared the approved value "Navy" with the listing value "Blue" seen at 2026-10-26T09:00:00Z. This is not a match or a formatting-only difference, because the values really differ, and it is not an accepted fix that did not apply, because there is no accepted submission with a recorded time. It is ranked after accepted fixes that did not apply: a confirmed mismatch needs a human, but nothing already submitted has failed to show up.
 
 ## Values
 
