@@ -8,8 +8,8 @@ Hard rules (apply to every section):
 
 ## 1. Outcome summary
 A Python CLI that reads (a) an approved product dataset and (b) timestamped observed listing snapshots plus submission history. It writes:
-- `out/report.md` + `out/report.json`: a prioritized exception report. Each row is one (seller, marketplace, SKU, attribute) with a status, a reason, and a next check.
-- `out/packets/<incident_id>.md`: one evidence packet per unresolved incident. Each packet has ids, approved/observed values (raw + normalized), sources and timestamps, submission history, facts vs possible causes, a suggested next step (human approval needed), and a HUMAN support draft that invents no case history.
+- `out/report.md` + `out/report.json`: a prioritized exception report. Each row is one (seller, marketplace, SKU, attribute) with a status, a reason, and a next check. The `reason` is a short plain-language explanation (2–3 sentences) built from fields the row already has: which approved and observed raw values were compared (or that there is no usable observation), why the next-closest status was ruled out, and why the row is ranked where it is / who acts. An untimed-submission or failed-refresh note is one extra sentence at the end. It states no facts or causes beyond the inputs; possible causes stay in the packet's hypotheses.
+- `out/packets/<incident_id>.md`: one evidence packet per unresolved incident. Each packet has ids, a `## Why this status` section with the same `reason` text (written for the human reviewer, not for the support draft), approved/observed values (raw + normalized), sources and timestamps, submission history, facts vs possible causes, a suggested next step (human approval needed), and a HUMAN support draft that invents no case history.
 - `out/raw/`: a verbatim copy of the inputs.
 
 Reruns are deterministic: the same inputs and the same `--as-of` give byte-identical outputs and the same incident ids. This also answers the brief's question: what we can automate safely is detection, verification, and evidence prep. Fixes and support contact stay with humans.
@@ -118,6 +118,7 @@ Fixed `as_of = 2026-10-26T12:00:00Z`, brief fixtures unless noted.
 | T14 normalization units | whitespace/case/NFKC/int parsing; synonyms not merged | as in §3 |
 | T14a untimed acceptance, mismatch | test-local copy of `submissions.csv` with `sub-002-1` `status_at` blank (DEMO-002 observed 1, approved 2) | MISMATCH (not UNKNOWN_NEEDS_REFRESH); warning that the acceptance time is unknown; packet exists |
 | T14b untimed acceptance, match | test-local copy with `sub-005-1` `status_at` blank (DEMO-005 observed Cream, approved Cream) | MATCH or MATCH_FORMAT_ONLY (not RESOLVED_VERIFIED, not UNKNOWN_NEEDS_REFRESH); warning present |
+| T15 plain-language reason | default run (DEMO-001..006) and variants | each `reason` names the approved and observed raw values (or says there is no usable observation), rules out the next-closest status, and explains the rank; each packet has `## Why this status` with the same text and no Reason row in its identity table; drafts carry none of it |
 
 ## 6. File plan
 ```
@@ -141,6 +142,7 @@ first-light-trial/
     test_marketplace.py# T10
     test_policy.py     # T11–T13
     test_normalize.py  # T14
+    test_status_why.py # T15
   out/                 # generated sample outputs; Builder commits these plus README.md
 ```
 About 300–400 lines of code total. No dependencies beyond pytest (dev).
