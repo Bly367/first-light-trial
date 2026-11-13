@@ -39,8 +39,10 @@ python3 -m pytest
 ## Assumptions
 
 Printed at the top of `out/report.md`: comparison-only normalization (whitespace, NFKC, casefold, numeric `int`),
-no synonyms, `UNKNOWN`/empty/`None` means no observation, untimed rows never decide status, 72h freshness,
-24h processing window with an inclusive `>=` boundary, and `approved.csv` as a history (newest `approved_at` wins).
+no synonyms, `UNKNOWN`/empty/`None` means no observation, 72h freshness, 24h processing window with an inclusive
+`>=` boundary, and `approved.csv` as a history (newest `approved_at` wins). Untimed rows never decide status; an
+accepted fix with no timestamp still shows a confirmed mismatch and warns that the acceptance time is missing, so
+the processing window can't be judged.
 
 ## Policy boundary
 
