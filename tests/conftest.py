@@ -12,6 +12,7 @@ AS_OF = "2026-10-26T12:00:00Z"
 INPUT_NAMES = ("approved", "observations", "submissions")
 TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?Z")
 DRAFT_MARK = "DRAFT — for a human to review and send"
+ATTACH_REMINDER = "Please attach the evidence packet before sending."
 
 
 def input_paths(variant=None):

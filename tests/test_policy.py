@@ -4,7 +4,9 @@ import socket
 
 import pytest
 
-from conftest import AS_OF, DRAFT_MARK, FIXTURES, TS_RE, cli_args, input_paths, rewrite_csv, snapshot_tree
+from conftest import (
+    AS_OF, ATTACH_REMINDER, DRAFT_MARK, FIXTURES, TS_RE, cli_args, input_paths, rewrite_csv, snapshot_tree,
+)
 
 CASE_NUMBER_RES = (
     re.compile(r"\bcase\s*(#|id\b|number|no\b)", re.I),
@@ -52,7 +54,11 @@ def test_t12_support_drafts_are_human_only(run):
     for path in packets:
         text = path.read_text(encoding="utf-8")
         assert DRAFT_MARK in text
-        draft = text.split(DRAFT_MARK, 1)[1]
+        evidence, draft = text.split(DRAFT_MARK, 1)
+        assert ATTACH_REMINDER in draft, path.name
+        if rows[path.stem]["status"] in {"MISMATCH", "ACCEPTED_NOT_APPLIED"}:
+            next_step = evidence.split("## Suggested next step", 1)[1]
+            assert "attach the evidence packet" in next_step, path.name
         for pattern in CASE_NUMBER_RES:
             assert not pattern.search(draft), path.name
         assert not PRIOR_CONTACT_RE.search(draft), path.name
@@ -88,6 +94,7 @@ def test_support_draft_omits_submission_ids_and_values(run, tmp_path):
         row = rows[path.stem]
         assert marker not in draft, path.name
         assert not re.search(r"\bsub-\d", draft), path.name
+        assert ATTACH_REMINDER in draft, path.name
         if row["submission_history"]:
             with_submissions += 1
             assert "see attached evidence packet" in draft

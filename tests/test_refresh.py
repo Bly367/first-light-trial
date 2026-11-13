@@ -64,25 +64,55 @@ def test_no_as_of_and_no_observed_at_reports_unknown(run, tmp_path):
         assert ts in allowed, f"invented timestamp {ts}"
 
 
-def test_blank_status_at_on_accepted_submission_needs_refresh(run, tmp_path):
-    untimed = {"sub-002-1", "sub-005-1"}
-    subs = rewrite_csv(
+def _blank_status_at(tmp_path, sub_ids):
+    return rewrite_csv(
         FIXTURES / "submissions.csv", tmp_path / "submissions.csv",
-        lambda rows: [dict(row, status_at="") if row["submission_id"] in untimed else row for row in rows],
+        lambda rows: [dict(row, status_at="") if row["submission_id"] in sub_ids else row for row in rows],
     )
-    r = run(overrides={"submissions": subs})
-    for sku, sub_id in (("DEMO-002", "sub-002-1"), ("DEMO-005", "sub-005-1")):
-        row = r.row(sku)
-        assert row["status"] == "UNKNOWN_NEEDS_REFRESH", sku
-        assert row["next_check"] == "refresh"
-        assert "no status_at" in row["reason"]
-        assert "processing window can't be judged" in row["reason"]
-        assert row["submission_history"][0]["submission_id"] == sub_id
-        assert row["submission_history"][0]["status_at"] is None
-        assert r.packet(row) is not None
-        assert any(
-            sub_id in w and "acceptance time is unknown" in w and "processing window can't be judged" in w
-            for w in r.data["warnings"]
-        ), sub_id
-    assert r.row("DEMO-006")["status"] == "PENDING_IN_WINDOW"
+
+
+def _has_untimed_acceptance_warning(r, sub_id):
+    return any(
+        sub_id in w and "acceptance time is unknown" in w and "processing window can't be judged" in w
+        for w in r.data["warnings"]
+    )
+
+
+def test_t14a_untimed_acceptance_keeps_mismatch(run, tmp_path):
+    r = run(overrides={"submissions": _blank_status_at(tmp_path, {"sub-002-1"})})
+    row = r.row("DEMO-002")
+    assert row["status"] == "MISMATCH"
+    assert row["status"] != "UNKNOWN_NEEDS_REFRESH"
+    assert row["observed_value_raw"] == "1"
+    assert "sub-002-1" in row["reason"] and "no status_at" in row["reason"]
+    assert row["submission_history"][0]["submission_id"] == "sub-002-1"
+    assert row["submission_history"][0]["status_at"] is None
+    assert _has_untimed_acceptance_warning(r, "sub-002-1")
+    packet = r.packet(row)
+    assert packet is not None
+    assert "human review" in packet
     assert r.row("DEMO-001")["status"] == "MISMATCH"
+    assert r.row("DEMO-006")["status"] == "PENDING_IN_WINDOW"
+
+
+def test_t14b_untimed_acceptance_never_resolves_a_match(run, tmp_path):
+    r = run(overrides={"submissions": _blank_status_at(tmp_path, {"sub-005-1"})})
+    row = r.row("DEMO-005")
+    assert row["status"] in {"MATCH", "MATCH_FORMAT_ONLY"}
+    assert row["status"] not in {"RESOLVED_VERIFIED", "UNKNOWN_NEEDS_REFRESH"}
+    assert row["observed_value_raw"] == "Cream"
+    assert "sub-005-1" in row["reason"] and "no status_at" in row["reason"]
+    assert _has_untimed_acceptance_warning(r, "sub-005-1")
+
+
+def test_timed_acceptance_still_decides_beside_an_untimed_one(run, tmp_path):
+    def add_untimed_copy(rows):
+        timed = next(row for row in rows if row["submission_id"] == "sub-002-1")
+        return rows + [dict(timed, submission_id="sub-002-2", status_at="")]
+
+    subs = rewrite_csv(FIXTURES / "submissions.csv", tmp_path / "submissions.csv", add_untimed_copy)
+    r = run(overrides={"submissions": subs})
+    row = r.row("DEMO-002")
+    assert row["status"] == "ACCEPTED_NOT_APPLIED"
+    assert "sub-002-1 accepted at 2026-10-25T09:00:00Z" in row["reason"]
+    assert _has_untimed_acceptance_warning(r, "sub-002-2")
