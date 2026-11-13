@@ -194,9 +194,13 @@ def packet_md(r, as_of):
             for label, value in [
                 ("Incident id", r["incident_id"]), ("Seller", r["seller_id"]), ("Marketplace", r["marketplace_id"]),
                 ("SKU", r["sku"]), ("Attribute", r["attribute"]), ("As of", fmt_ts(as_of) or "unknown"),
-                ("Reason", r["reason"]), ("Next check", r["next_check"]),
+                ("Next check", r["next_check"]),
             ]
         ],
+        "",
+        "## Why this status",
+        "",
+        r["reason"],
         "",
         "## Values",
         "",
