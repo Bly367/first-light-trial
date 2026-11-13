@@ -154,7 +154,7 @@ def classify_key(key, approved, observations, submissions, as_of):
     untimed_accepted = [s for s in untimed_subs if s["status"] == "accepted"]
     untimed_other = [s for s in untimed_subs if s["status"] != "accepted"]
     untimed_note = "".join(
-        f"; {s['submission_id']} ({s['status']}) has no status_at, so it does not decide status" for s in untimed_other
+        f"; {s['submission_id']} ({s['status']}) has no status_at, so it does not decide status" for s in untimed_subs
     )
     row["warnings"] = [
         f"submission {s['submission_id']} was accepted but has no status_at: the acceptance time is unknown, "
@@ -232,11 +232,6 @@ def classify_key(key, approved, observations, submissions, as_of):
             "MATCH_FORMAT_ONLY": f"{seen} matches after normalization; raw values differ",
             "MATCH": f"{seen} matches exactly",
         }[status]
-    if untimed_accepted:
-        status, next_check = "UNKNOWN_NEEDS_REFRESH", "refresh"
-        ids = ", ".join(s["submission_id"] for s in untimed_accepted)
-        reason = (f"{ids} accepted with no status_at: acceptance time unknown, so the processing window can't be judged; "
-                  + (seen if last else "no timed observation"))
     reason += untimed_note
     if failed and last:
         reason += f"; observation marked stale: newer refresh failed ({', '.join(o['observed_at'] or 'untimed' for o in failed)})"
