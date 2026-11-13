@@ -7,6 +7,7 @@ from . import load
 from .classify import FRESHNESS_HOURS, HUMAN_REVIEW, PROCESSING_WINDOW_HOURS, fmt_ts
 
 DRAFT_MARK = "DRAFT — for a human to review and send"
+ATTACH_REMINDER = "Please attach the evidence packet before sending."
 OUT_MARKER = ".fltrial-out"
 OUT_MARKER_TEXT = "Created by fltrial. fltrial may rewrite report files and clear packets/ and raw/ in this folder.\n"
 
@@ -157,7 +158,7 @@ def _draft(r):
         opening = f"For {subject}, the listing shows a value that differs from our approved value."
     else:
         opening = f"For {subject}, we could not yet confirm the value shown on the listing."
-    lines = ["Hello,", "", opening, "", f"- Approved value: \"{r['approved_value_raw']}\""]
+    lines = [f"> {ATTACH_REMINDER}", "", "Hello,", "", opening, "", f"- Approved value: \"{r['approved_value_raw']}\""]
     if r["observed_value_raw"] is not None:
         lines.append(f"- Value seen on the listing: \"{r['observed_value_raw']}\" (observed {r['observed_at']})")
     else:
@@ -236,7 +237,7 @@ def packet_md(r, as_of):
         "## Suggested next step (human approval needed)",
         "",
         f"- {_next_step(r)}",
-        *([] if r["status"] in HUMAN_REVIEW else ["- Hold the draft below until more data is in."]),
+        *([f"- {ATTACH_REMINDER}"] if r["status"] in HUMAN_REVIEW else ["- Hold the draft below until more data is in."]),
         "- This tool changes no listings and contacts no one.",
         "",
         f"## Support message: {DRAFT_MARK}",
