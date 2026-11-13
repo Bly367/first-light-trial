@@ -46,9 +46,12 @@
 ## Suggested next step (human approval needed)
 
 - human review: confirm approved value, prepare correction for human approval
+- Please attach the evidence packet before sending.
 - This tool changes no listings and contacts no one.
 
 ## Support message: DRAFT — for a human to review and send
+
+> Please attach the evidence packet before sending.
 
 Hello,
 
